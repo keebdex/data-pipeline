@@ -16,7 +16,7 @@ async function downloadImage(url, filename) {
             }
 
             // console.log('image downloaded successfully', filename)
-        }
+        },
     )
 }
 
@@ -52,7 +52,7 @@ async function uploadImage(filename, url, promise) {
                 filename,
                 status,
                 message,
-                JSON.stringify(data)
+                JSON.stringify(data),
             )
 
             return { ok: false, status, message, data }

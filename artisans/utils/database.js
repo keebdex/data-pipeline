@@ -76,6 +76,7 @@ const getColorways = async (maker_id, rows = []) => {
 
     if (error) {
         console.warn(`get ${ARTISAN_COLORWAYS_TABLE} error`, maker_id, error)
+
         return rows
     }
 
@@ -98,6 +99,7 @@ const getSculpts = async (maker_id) => {
 
     if (error) {
         console.warn(`get ${ARTISAN_SCULPTS_TABLE} error`, maker_id, error)
+
         return []
     }
 
@@ -106,7 +108,10 @@ const getSculpts = async (maker_id) => {
 
 const insertRows = async (table, values) => {
     if (dryRun) {
-        console.log(`[DRY RUN] Would insert ${values.length} rows into ${table}`)
+        console.log(
+            `[DRY RUN] Would insert ${values.length} rows into ${table}`,
+        )
+
         return
     }
 
@@ -119,7 +124,10 @@ const insertRows = async (table, values) => {
 
 const deleteRows = async (table, column, values) => {
     if (dryRun) {
-        console.log(`[DRY RUN] Would delete ${values.length} rows from ${table}`)
+        console.log(
+            `[DRY RUN] Would delete ${values.length} rows from ${table}`,
+        )
+
         return
     }
 
@@ -133,6 +141,7 @@ const deleteRows = async (table, column, values) => {
 const updateRow = async (table, id, values) => {
     if (dryRun) {
         console.log(`[DRY RUN] Would update ${table} row with id: ${id}`)
+
         return
     }
 
@@ -270,7 +279,9 @@ const updateMakerDatabase = async (tables, options = {}) => {
             ...storedColorways.filter(
                 (colorway) =>
                     !colorway.deleted &&
-                    !existingColorwayKeys.includes(makeKeyByColorwayId(colorway)),
+                    !existingColorwayKeys.includes(
+                        makeKeyByColorwayId(colorway),
+                    ),
             ),
         )
     }
@@ -306,7 +317,8 @@ const updateMakerDatabase = async (tables, options = {}) => {
 
         if (insertingMapByColorwayId[keyByColorwayId]) {
             // colorway_id/img not changed
-            const { remote_img, ...rest } = insertingMapByColorwayId[keyByColorwayId]
+            const { remote_img, ...rest } =
+                insertingMapByColorwayId[keyByColorwayId]
 
             updateClw[`${c.id}__${c.colorway_id}`] = rest
             delete insertingMapByColorwayId[keyByColorwayId]
@@ -345,7 +357,7 @@ const updateMakerDatabase = async (tables, options = {}) => {
         await Promise.map(
             Object.entries(updateClw),
             async ([rowKey, data]) => {
-                const [id, old_colorway_id] = rowKey.split('__')
+                const [id] = rowKey.split('__')
                 await updateRow(ARTISAN_COLORWAYS_TABLE, id, data)
             },
             { concurrency: 1 },
@@ -392,6 +404,7 @@ const updateMakerDatabase = async (tables, options = {}) => {
 const updateMetadata = async (id, data) => {
     if (dryRun) {
         console.log(`[DRY RUN] Would update maker metadata with id: ${id}`)
+
         return
     }
 
@@ -401,7 +414,7 @@ const updateMetadata = async (id, data) => {
         .eq('id', id)
 
     if (error) {
-        console.warn(`update maker error`, id, error)
+        console.warn('update maker error', id, error)
     }
 }
 

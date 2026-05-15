@@ -19,7 +19,9 @@ const PARTIAL_MAKERS = new Set(['keycat'])
 // Check for dry-run flag from command line arguments
 const isDryRun = process.argv.includes('--dry-run')
 if (isDryRun) {
-    console.log('🔄 DRY RUN MODE - Database operations will be logged but not executed')
+    console.log(
+        '🔄 DRY RUN MODE - Database operations will be logged but not executed',
+    )
     setDryRun(true)
 }
 
@@ -62,10 +64,14 @@ const syncImages = async (colorways) => {
 
     console.log('syncing images', images.length)
 
-    await Promise.map(images, async ([filename, url]) => {
-        await uploadImage(filename, url)
-        existedImages.push(filename)
-    }, { concurrency: 5 })
+    await Promise.map(
+        images,
+        async ([filename, url]) => {
+            await uploadImage(filename, url)
+            existedImages.push(filename)
+        },
+        { concurrency: 5 },
+    )
 }
 
 function scan(filename) {
@@ -79,7 +85,7 @@ function scan(filename) {
         .then((tables) =>
             updateMakerDatabase(tables, {
                 preserve_missing: PARTIAL_MAKERS.has(maker_id),
-            })
+            }),
         )
         .then(async ({ colorways }) => {
             await syncImages(colorways)

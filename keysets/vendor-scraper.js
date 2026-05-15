@@ -6,7 +6,7 @@ const { createClient } = require('@supabase/supabase-js')
 
 const supabase = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY
+    process.env.SUPABASE_KEY,
 )
 
 // Load adapters with priority order
@@ -77,7 +77,7 @@ const syncKeysets = async () => {
         if (keysetError) {
             console.error(
                 `‼️ Error inserting keyset: ${keyset.name}`,
-                keysetError.message
+                keysetError.message,
             )
             continue
         }
@@ -89,11 +89,11 @@ const syncKeysets = async () => {
             if (kitError) {
                 console.error(
                     `‼️ Error inserting kits for ${keyset.profile_keyset_id}`,
-                    kitError.message
+                    kitError.message,
                 )
             } else {
                 console.log(
-                    `✅ Inserted ${kits.length} kits for ${keyset.name}`
+                    `✅ Inserted ${kits.length} kits for ${keyset.name}`,
                 )
             }
         }

@@ -9,7 +9,7 @@ const { ARTISAN_MAKERS_TABLE } = require('../utils')
 
 const supabase = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY
+    process.env.SUPABASE_KEY,
 )
 
 const getActiveDocIds = () =>
@@ -21,8 +21,11 @@ const getActiveDocIds = () =>
         .then((makers) => {
             return flattenDeep(
                 makers.map((m) =>
-                    m.document_ids.map((doc_id) => ({ maker_id: m.id, doc_id }))
-                )
+                    m.document_ids.map((doc_id) => ({
+                        maker_id: m.id,
+                        doc_id,
+                    })),
+                ),
             )
         })
 

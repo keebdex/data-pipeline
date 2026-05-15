@@ -44,7 +44,7 @@ function parseTitle(title) {
 function toAbsoluteUrl(base, url) {
     try {
         return new URL(url, base).toString()
-    } catch (e) {
+    } catch {
         return null
     }
 }
@@ -62,6 +62,7 @@ function extractImage($container, baseUrl) {
 
     if (srcset) {
         const first = srcset.split(',').reverse()[0].trim().split(' ')[0]
+
         return toAbsoluteUrl(baseUrl, first)
     }
 
@@ -80,7 +81,7 @@ function extractSales(html, baseUrl = SHOP_URL) {
 
         const $a = $container
             .find(
-                'a.woocommerce-LoopProduct-link.woocommerce-loop-product__link'
+                'a.woocommerce-LoopProduct-link.woocommerce-loop-product__link',
             )
             .first()
         if ($a.length === 0) return
@@ -102,7 +103,7 @@ function extractSales(html, baseUrl = SHOP_URL) {
 
         const sculpt_id = urlSlugify(parsed.sculpt)
         const colorway_key = `${maker_id}-${sculpt_id}-${urlSlugify(
-            parsed.colorway
+            parsed.colorway,
         )}`
 
         items.push({
@@ -134,7 +135,7 @@ const scraper = async () => {
                 name: sculpt_id.charAt(0).toUpperCase() + sculpt_id.slice(1),
                 img: colorways[0]?.img || null,
                 colorways: colorways.reverse(),
-            })
+            }),
         )
 
         return tables

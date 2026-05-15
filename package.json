@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "gdocs-importer": "node artisans/gdocs-importer.js",
     "maker-scraper": "node artisans/maker-scraper.js",
     "vendor-scraper": "node keysets/vendor-scraper.js",
@@ -36,5 +38,12 @@
     "ini": "^6.0.0",
     "lodash": "^4.18.1",
     "slugify": "^1.6.9"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.3.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.6.0",
+    "prettier": "^3.8.3"
   }
 }

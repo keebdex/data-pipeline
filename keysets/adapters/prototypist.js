@@ -27,27 +27,17 @@ function parseDate(dateStr) {
 function extractGroupBuyInfo(text = '') {
     const startMatch = text.match(/Group\s*Buy\s*Starts:\s*([^\n]+)/i)
     const endMatch = text.match(
-        /(Closing\s*Date|Group\s*Buy\s*Ends):\s*([^\n]+)/i
+        /(Closing\s*Date|Group\s*Buy\s*Ends):\s*([^\n]+)/i,
     )
-    const shippingMatch = text.match(/Expected\s*Shipping\s*time:\s*([^\n]+)/i)
 
     const clean = (str) => (str ? str.replace(/Closing.*$/i, '').trim() : null)
     const start = clean(startMatch ? startMatch[1] : null)
     const end = clean(endMatch ? endMatch[2] : null)
-    const shipping = clean(shippingMatch ? shippingMatch[1] : null)
 
     return {
         start_date: parseDate(start),
         end_date: parseDate(end),
     }
-}
-
-function removeGroupBuyLines(text = '') {
-    return text
-        .replace(/Group\s*Buy\s*Starts:[^\n]*\n?/gi, '')
-        .replace(/(Closing\s*Date|Group\s*Buy\s*Ends):[^\n]*\n?/gi, '')
-        .replace(/Expected\s*Shipping\s*time:[^\n]*\n?/gi, '')
-        .trim()
 }
 
 function normalizeKitName(rawName = '') {
@@ -103,7 +93,7 @@ async function fetchKeysets() {
                         !(
                             k.title.toLowerCase().includes('deskmat') ||
                             k.title.toLowerCase().includes('deskpad')
-                        )
+                        ),
                 )
                 .map((v) => ({
                     name: normalizeKitName(v.title),
@@ -115,7 +105,6 @@ async function fetchKeysets() {
             // extract & clean description
             let rawDescription = removeHtmlTags(p.body_html)
             const groupBuy = extractGroupBuyInfo(rawDescription)
-            const description = removeGroupBuyLines(rawDescription)
 
             return {
                 keyset: {

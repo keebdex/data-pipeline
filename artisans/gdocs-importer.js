@@ -17,7 +17,9 @@ const { findLast, uniqBy } = require('lodash')
 // Check for dry-run flag from command line arguments
 const isDryRun = process.argv.includes('--dry-run')
 if (isDryRun) {
-    console.log('🔄 DRY RUN MODE - Database operations will be logged but not executed')
+    console.log(
+        '🔄 DRY RUN MODE - Database operations will be logged but not executed',
+    )
     setDryRun(true)
 }
 
@@ -69,7 +71,7 @@ async function scan(maker) {
                 let revisions = await getRevisions(fileId)
                 revisions = uniqBy(
                     revisions,
-                    (r) => r?.lastModifyingUser?.permissionId
+                    (r) => r?.lastModifyingUser?.permissionId,
                 )
 
                 revisions.forEach((revision) => {
@@ -119,7 +121,10 @@ async function scan(maker) {
                 deleted: true,
             })
 
-            console.log('maker disabled from google sync and marked deleted', id)
+            console.log(
+                'maker disabled from google sync and marked deleted',
+                id,
+            )
         }
     }
 }
@@ -130,7 +135,7 @@ getGDocMakers().then(async (makers) => {
     existedImages = await getListImages()
 
     makers = makers.filter(
-        (m) => Array.isArray(m.document_ids) && m.document_ids.length
+        (m) => Array.isArray(m.document_ids) && m.document_ids.length,
     )
 
     console.log('existed images', existedImages.length)

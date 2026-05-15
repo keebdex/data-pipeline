@@ -58,7 +58,7 @@ const normalize = (text) => {
 const normalizeDate = (text) => {
     try {
         return format(parse(text, 'MMMM yyyy', new Date()), 'MMM yyyy')
-    } catch (error) {
+    } catch {
         return text
     }
 }
@@ -74,9 +74,9 @@ const parseSculpt = (table, maker_id) => {
         .join('')
     let subtext = attrNodes
         ? attrNodes.paragraph.elements
-            .map((s) => s.textRun.content)
-            .join('')
-            .toLowerCase()
+              .map((s) => s.textRun.content)
+              .join('')
+              .toLowerCase()
         : ''
 
     const sculpt = {
@@ -100,12 +100,12 @@ const parseSculpt = (table, maker_id) => {
             try {
                 sculpt.release = format(
                     parse(dateMatch[1], 'yyyy/M/d', new Date()),
-                    'dd MMM yyyy'
+                    'dd MMM yyyy',
                 )
-            } catch (error) {
+            } catch {
                 sculpt.release = format(
                     parse(dateMatch[1], 'yyyy/d/M', new Date()),
-                    'dd MMM yyyy'
+                    'dd MMM yyyy',
                 )
             }
             text = text.replace(regex.release_jelly_key, '')
@@ -170,10 +170,13 @@ const parseColorways = (table, document, maker_id, sculpt, stem) => {
             }
 
             if (element?.inlineObjectElement?.inlineObjectId) {
-                const obj = document.inlineObjects[element.inlineObjectElement.inlineObjectId]
+                const obj =
+                    document.inlineObjects[
+                        element.inlineObjectElement.inlineObjectId
+                    ]
                 const img = get(
                     obj,
-                    'inlineObjectProperties.embeddedObject.imageProperties.contentUri'
+                    'inlineObjectProperties.embeddedObject.imageProperties.contentUri',
                 )
 
                 colorway.remote_img = img
@@ -202,7 +205,8 @@ const parseColorways = (table, document, maker_id, sculpt, stem) => {
             text = text.replace(regex.oneoff, '')
         }
 
-        const qtySameNumberFractionMatch = regex.qty_same_number_fraction.exec(text)
+        const qtySameNumberFractionMatch =
+            regex.qty_same_number_fraction.exec(text)
         if (qtySameNumberFractionMatch) {
             colorway.qty = Number(qtySameNumberFractionMatch[1])
             text = text.replace(regex.qty_same_number_fraction, '')
@@ -284,12 +288,12 @@ const isHeader = (table) => {
     let [titleNodes] = table.table.tableRows[0].tableCells[0].content
 
     try {
-        let text = titleNodes.paragraph.elements
+        const _text = titleNodes.paragraph.elements
             .map((s) => s.textRun.content.trim())
             .join('')
 
         return true
-    } catch (error) {
+    } catch {
         return false
     }
 }
@@ -341,7 +345,7 @@ const parser = (document, maker_id) => {
                 document,
                 maker_id,
                 sculpt,
-                stem
+                stem,
             )
 
             sculpt.colorways = colorways.filter((c) => c.img)
@@ -359,7 +363,7 @@ const parser = (document, maker_id) => {
 
     return keyBy(
         sculpts.filter((s) => s && s.name && s.colorways.length),
-        (s) => `${s.maker_id}/${s.sculpt_id}`
+        (s) => `${s.maker_id}/${s.sculpt_id}`,
     )
 }
 

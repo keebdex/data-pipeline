@@ -8,16 +8,18 @@ const { ARTISAN_COLORWAYS_TABLE } = require('../utils')
 
 const supabase = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY
+    process.env.SUPABASE_KEY,
 )
 
 const scrapers = ['alpha-keycaps', 'gooey-keys']
 
 const normalizeImagePath = (url = '') =>
-    url.replace('/public', '').replace(
-        `https://imagedelivery.net/${process.env.CF_IMAGES_ACCOUNT_HASH}/`,
-        ''
-    )
+    url
+        .replace('/public', '')
+        .replace(
+            `https://imagedelivery.net/${process.env.CF_IMAGES_ACCOUNT_HASH}/`,
+            '',
+        )
 
 const getColorways = async (rows = []) => {
     const { data } = await supabase

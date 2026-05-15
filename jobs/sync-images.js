@@ -7,7 +7,7 @@ const { urlSlugify } = require('../utils')
 
 const supabase = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY
+    process.env.SUPABASE_KEY,
 )
 
 const DELIVERY_BASE_URL = `https://imagedelivery.net/${process.env.CF_IMAGES_ACCOUNT_HASH}`
@@ -95,7 +95,7 @@ const syncNewKeyset = async (keyset) => {
         if (error) {
             console.error(
                 `Failed to remove image url for keyset ${keyset.profile_keyset_id}`,
-                error
+                error,
             )
         }
     }
@@ -122,7 +122,7 @@ const syncNewKeysetKit = async (kit) => {
         if (error) {
             console.error(
                 `Failed to remove image url for keyset kit ${kit.id}`,
-                error
+                error,
             )
         }
     }
@@ -155,21 +155,19 @@ const syncNewKeyboardVariant = async (variant) => {
 Promise.all([getKeysets(), getKeysetKits(), getKeyboardVariants()])
     .then(async ([keysets, kits, variants]) => {
         const unsyncedKeysets = keysets.filter(
-            (keyset) =>
-                keyset.img &&
-                !keyset.img.includes(DELIVERY_BASE_URL)
+            (keyset) => keyset.img && !keyset.img.includes(DELIVERY_BASE_URL),
         )
 
         const unsyncedKits = kits.filter(
-            (kit) =>
-                kit.img &&
-                !kit.img.includes(DELIVERY_BASE_URL)
+            (kit) => kit.img && !kit.img.includes(DELIVERY_BASE_URL),
         )
 
         const unsyncedVariants = variants.filter(
             (variant) =>
-                (variant.img_front && !variant.img_front.includes(DELIVERY_BASE_URL)) ||
-                (variant.img_back && !variant.img_back.includes(DELIVERY_BASE_URL))
+                (variant.img_front &&
+                    !variant.img_front.includes(DELIVERY_BASE_URL)) ||
+                (variant.img_back &&
+                    !variant.img_back.includes(DELIVERY_BASE_URL)),
         )
 
         console.log('keysets to sync', unsyncedKeysets.length)
@@ -177,11 +175,15 @@ Promise.all([getKeysets(), getKeysetKits(), getKeyboardVariants()])
         console.log('keyboard variants to sync', unsyncedVariants.length)
 
         if (unsyncedKeysets.length) {
-            await Promise.map(unsyncedKeysets, syncNewKeyset, { concurrency: 5 })
+            await Promise.map(unsyncedKeysets, syncNewKeyset, {
+                concurrency: 5,
+            })
         }
 
         if (unsyncedKits.length) {
-            await Promise.map(unsyncedKits, syncNewKeysetKit, { concurrency: 5 })
+            await Promise.map(unsyncedKits, syncNewKeysetKit, {
+                concurrency: 5,
+            })
         }
 
         if (unsyncedVariants.length) {

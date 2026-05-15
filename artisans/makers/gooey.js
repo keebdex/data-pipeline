@@ -9,7 +9,7 @@ const maker_id = 'gooey-keys'
 const normalizeDate = (text) => {
     try {
         return format(parse(text, 'MMMM yyyy', new Date()), 'MMM yyyy')
-    } catch (error) {
+    } catch {
         return text
     }
 }
@@ -34,7 +34,7 @@ const scraper = async () => {
                 release: normalizeDate(releaseDate),
                 sale_type: null,
                 colorway_id: crc32(
-                    `${maker_id}-${sculpt_id}-${urlSlugify(name)}-${order}`
+                    `${maker_id}-${sculpt_id}-${urlSlugify(name)}-${order}`,
                 ).toString(16),
                 order,
             }

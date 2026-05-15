@@ -79,6 +79,7 @@ const scraper = async () => {
         catalogs.map(async (name) => {
             const sculpt_id = urlSlugify(name)
             const colorways = await sculptScraper(sculpt_id, name)
+
             return {
                 name,
                 maker_id,
@@ -86,7 +87,7 @@ const scraper = async () => {
                 colorways,
                 img: findLast(colorways).img,
             }
-        })
+        }),
     )
 
     return sculpts

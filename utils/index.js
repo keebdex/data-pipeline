@@ -6,6 +6,7 @@ const ARTISAN_COLORWAYS_TABLE = 'artisan_colorways'
 
 exports.urlSlugify = (text) => {
     text = text.replace(/[*+~.()'"!:@,/]/g, '')
+
     return slugify(text, { lower: true })
 }
 
