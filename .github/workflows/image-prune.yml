@@ -20,13 +20,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Use Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Use latest LTS Node.js
+        uses: actions/setup-node@v6
         with:
-          bun-version: latest
+          node-version: lts/*
+          check-latest: true
 
       - name: Install dependencies
-        run: bun install
+        run: npm install
 
       - name: Prune Cloudflare Images
-        run: bun run prune-images
+        run: npm run prune-images
