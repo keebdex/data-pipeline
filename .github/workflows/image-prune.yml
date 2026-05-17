@@ -3,9 +3,7 @@ name: Keebdex Image Prune
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 0 1,15 * *" # Runs at midnight on the first and fifteenth day of every month
-  # push:
-  #   branches: [ "main" ]
+    - cron: '0 0 1,15 * *'
 
 env:
   NODE_ENV: production
@@ -20,7 +18,7 @@ jobs:
   image-prune:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Use Bun
         uses: oven-sh/setup-bun@v2

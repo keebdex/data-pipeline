@@ -3,9 +3,9 @@ name: Keebdex Artisan Data Sync
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 0 * * *" # Runs daily at 00:00 GMT
+    - cron: '0 0 * * *' # Runs daily at 00:00 GMT
   push:
-    branches: ["main"]
+    branches: ['main']
 
 env:
   NODE_ENV: production
@@ -20,7 +20,7 @@ jobs:
   artisan-sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Use Bun
         uses: oven-sh/setup-bun@v2
@@ -31,10 +31,7 @@ jobs:
         run: bun install
 
       - name: Create Google service account key
-        uses: jsdaniell/create-json@v1.2.3
-        with:
-          name: "keebdex.json"
-          json: ${{ env.GOOGLE_SERVICE_ACCOUNT }}
+        run: printf '%s' "$GOOGLE_SERVICE_ACCOUNT" > keebdex.json
 
       - name: Sync artisan data from Google Docs
         run: bun run gdocs-importer
