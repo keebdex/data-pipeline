@@ -259,13 +259,10 @@ const parseColorways = (table, document, maker_id, sculpt, stem) => {
             }
         }
 
-        if (maker_id === 'hello-caps') {
+        if (maker_id === 'hello') {
             if (text.includes('*')) {
                 colorway.sale_type = 'Commission'
-                text = text
-                    .replace('( * )', '')
-                    .replace('*', '')
-                    .replace('  ', ' ')
+                text = text.replace('( * )', '').replace('*', '')
             }
         }
 
