@@ -3,7 +3,7 @@ name: Keebdex Image Sync
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 1 * * *' # Runs daily at 01:00 GMT, 3 hours after the artisan sync workflow
+    - cron: '0 1 * * *' # Runs daily at 01:00 GMT, 2 hours after the artisan sync workflow
 
 env:
   NODE_ENV: production
