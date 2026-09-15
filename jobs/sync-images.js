@@ -3,14 +3,12 @@ require('dotenv').config()
 const { createClient } = require('@supabase/supabase-js')
 const Promise = require('bluebird')
 const { uploadImage } = require('../utils/image')
-const { urlSlugify } = require('../utils')
+const { urlSlugify, DELIVERY_BASE_URL } = require('../utils')
 
 const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_KEY,
 )
-
-const DELIVERY_BASE_URL = `https://imagedelivery.net/${process.env.CF_IMAGES_ACCOUNT_HASH}`
 
 const makeKeysetImageId = (k) => `keyset/${k.profile_keyset_id}`
 const makeKeysetKitImageId = (k) =>

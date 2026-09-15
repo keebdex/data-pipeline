@@ -9,6 +9,7 @@ const {
     setDryRun,
 } = require('./utils/database')
 const { uploadImage, getListImages } = require('../utils/image')
+const { DELIVERY_BASE_URL } = require('../utils')
 
 /**
  * List of makers that are known to have incomplete data
@@ -26,8 +27,6 @@ if (isDryRun) {
 }
 
 let existedImages = []
-
-const DELIVERY_BASE_URL = `https://imagedelivery.net/${process.env.CF_IMAGES_ACCOUNT_HASH}`
 
 const normalizeColorwayImage = (colorway) => {
     if (!colorway.img || colorway.img.includes(DELIVERY_BASE_URL)) {

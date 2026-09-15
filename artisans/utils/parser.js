@@ -1,6 +1,6 @@
 const { format, parse } = require('date-fns')
 const { chunk, flatten, findLast, get, keyBy } = require('lodash')
-const { urlSlugify } = require('../../utils')
+const { urlSlugify, DELIVERY_BASE_URL } = require('../../utils')
 
 const regex = {
     artisan_keycap: /artisan keycaps|artisan keycap/gim,
@@ -181,7 +181,7 @@ const parseColorways = (table, document, maker_id, sculpt, stem) => {
 
                 colorway.remote_img = img
                 colorway.colorway_id = obj.objectId
-                colorway.img = `https://imagedelivery.net/${process.env.CF_IMAGES_ACCOUNT_HASH}/artisan/${maker_id}/${sculpt.sculpt_id}/${obj.objectId}/public`
+                colorway.img = `${DELIVERY_BASE_URL}/artisan/${maker_id}/${sculpt.sculpt_id}/${obj.objectId}/public`
             }
         })
 

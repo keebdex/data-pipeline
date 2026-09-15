@@ -4,7 +4,7 @@ const { createClient } = require('@supabase/supabase-js')
 const Promise = require('bluebird')
 const { difference, flattenDeep } = require('lodash')
 const { getListImages, deleteImage } = require('../utils/image')
-const { ARTISAN_COLORWAYS_TABLE } = require('../utils')
+const { ARTISAN_COLORWAYS_TABLE, DELIVERY_BASE_URL } = require('../utils')
 
 const supabase = createClient(
     process.env.SUPABASE_URL,
@@ -14,12 +14,7 @@ const supabase = createClient(
 const scrapers = ['alpha-keycaps', 'gooey-keys']
 
 const normalizeImagePath = (url = '') =>
-    url
-        .replace('/public', '')
-        .replace(
-            `https://imagedelivery.net/${process.env.CF_IMAGES_ACCOUNT_HASH}/`,
-            '',
-        )
+    url.replace('/public', '').replace(`${DELIVERY_BASE_URL}/`, '')
 
 const getColorways = async (rows = []) => {
     const { data } = await supabase
