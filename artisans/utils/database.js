@@ -17,26 +17,6 @@ const supabase = createClient(
 const isDevelopment = process.env.NODE_ENV !== 'production'
 let dryRun = false
 
-const makeColorwayKey = (c, withOrder) => {
-    const keys = [
-        c.maker_id,
-        c.sculpt_id,
-        c.colorway_id,
-        c.name,
-        c.release,
-        c.qty,
-        c.photo_credit,
-        c.img,
-        c.stem && c.stem.sort().join('-'),
-    ]
-
-    if (withOrder) {
-        keys.push(c.order)
-    }
-
-    return keys.join()
-}
-
 const makeKeyByColorwayId = (c) =>
     `${c.maker_id}-${c.sculpt_id}-${c.colorway_id}`
 const makeKeyByName = (c) => `${c.maker_id}-${c.sculpt_id}-${c.name}`
@@ -58,6 +38,28 @@ const makeImageId = (c) =>
 
 const makerSculptId = (s) => `${s.maker_id}/${s.sculpt_id}`
 
+// only these colorway fields are ever synced from google docs
+const GDOC_SYNCABLE_FIELDS = [
+    'name',
+    'release',
+    'qty',
+    'photo_credit',
+    'img',
+    'stem',
+]
+
+// array fields (e.g. stem) must be compared by content, not reference/order
+const isFieldChanged = (incoming, stored) => {
+    if (Array.isArray(incoming) || Array.isArray(stored)) {
+        const a = Array.isArray(incoming) ? [...incoming].sort() : []
+        const b = Array.isArray(stored) ? [...stored].sort() : []
+
+        return a.join(',') !== b.join(',')
+    }
+
+    return incoming !== stored
+}
+
 const getGDocMakers = () =>
     supabase
         .from(ARTISAN_MAKERS_TABLE)
@@ -66,11 +68,17 @@ const getGDocMakers = () =>
         .neq('disable_google_sync', true)
         .then(({ data }) => data.filter((r) => Array.isArray(r.document_ids)))
 
-const getColorways = async (maker_id, rows = []) => {
-    const { data, error } = await supabase
+const getColorways = async (maker_id, source, rows = []) => {
+    let query = supabase
         .from(ARTISAN_COLORWAYS_TABLE)
         .select()
         .eq('maker_id', maker_id)
+
+    if (source) {
+        query = query.eq('source', source)
+    }
+
+    const { data, error } = await query
         .order('id')
         .range(rows.length, rows.length + 999)
 
@@ -81,14 +89,13 @@ const getColorways = async (maker_id, rows = []) => {
     }
 
     const batch = data || []
-
-    rows = rows.concat(batch)
+    const updatedRows = rows.concat(batch)
 
     if (batch.length === 1000) {
-        return getColorways(maker_id, rows)
+        return getColorways(maker_id, source, updatedRows)
     }
 
-    return rows
+    return updatedRows
 }
 
 const getSculpts = async (maker_id) => {
@@ -140,7 +147,10 @@ const deleteRows = async (table, column, values) => {
 
 const updateRow = async (table, id, values) => {
     if (dryRun) {
-        console.log(`[DRY RUN] Would update ${table} row with id: ${id}`)
+        console.log(
+            `[DRY RUN] Would update ${table} row with id: ${id}`,
+            values,
+        )
 
         return
     }
@@ -247,7 +257,7 @@ const updateMakerDatabase = async (tables, options = {}) => {
     // update sculpts
     let sculpts = tables.map(({ colorways, ...rest }) => rest)
     const incomingColorways = flatten(map(tables, 'colorways'))
-    const storedColorways = await getColorways(maker_id)
+    const storedColorways = await getColorways(maker_id, 'gdoc')
 
     if (preserve_missing) {
         const storedSculpts = await getSculpts(maker_id)
@@ -291,56 +301,64 @@ const updateMakerDatabase = async (tables, options = {}) => {
     // update colorways
     const colorways = incomingColorways
 
-    const incomingKeys = colorways.map((c) => makeColorwayKey(c, true))
-    const existedKeys = storedColorways.map((c) => makeColorwayKey(c, true))
+    const storedByColorwayId = keyBy(storedColorways, makeKeyByColorwayId)
+    const storedByName = keyBy(storedColorways, makeKeyByName)
 
-    const newKeys = difference(incomingKeys, existedKeys)
-    const changedKeys = difference(existedKeys, incomingKeys)
-
-    const tobeInserted = colorways.filter((c) =>
-        newKeys.includes(makeColorwayKey(c, true)),
-    )
-    const tobeUpdated = storedColorways.filter((c) =>
-        changedKeys.includes(makeColorwayKey(c, true)),
-    )
-
-    const insertingMapByColorwayId = keyBy(tobeInserted, makeKeyByColorwayId)
-    const insertingMapByName = keyBy(tobeInserted, makeKeyByName)
-
-    const outdatedImages = []
+    const insertClws = []
     const updateClw = {}
-    const deletedRows = []
+    const outdatedImages = []
+    const matchedStoredIds = new Set()
 
-    tobeUpdated.forEach((c) => {
-        const keyByColorwayId = makeKeyByColorwayId(c)
-        const keyByName = makeKeyByName(c)
+    colorways.forEach((incoming) => {
+        const byColorwayId = storedByColorwayId[makeKeyByColorwayId(incoming)]
+        const byName = storedByName[makeKeyByName(incoming)]
+        const stored = byColorwayId || byName
 
-        if (insertingMapByColorwayId[keyByColorwayId]) {
-            // colorway_id/img not changed
-            const { remote_img, ...rest } =
-                insertingMapByColorwayId[keyByColorwayId]
+        if (!stored) {
+            // not found in DB, insert as a new google docs sourced row
+            const { remote_img, ...rest } = incoming
 
-            updateClw[`${c.id}__${c.colorway_id}`] = rest
-            delete insertingMapByColorwayId[keyByColorwayId]
-        } else if (insertingMapByName[keyByName]) {
-            // name is same, colorway_id/img changed
-            const { remote_img, ...rest } = insertingMapByName[keyByName]
-            const newKey = makeKeyByColorwayId(rest)
+            insertClws.push({ ...rest, source: 'gdoc', overridden_fields: [] })
 
-            updateClw[`${c.id}__${c.colorway_id}`] = rest
-            delete insertingMapByColorwayId[newKey]
+            return
+        }
 
-            outdatedImages.push(makeImageId(c))
-        } else {
-            // colorway deleted, to be removed from the database
-            outdatedImages.push(makeImageId(c))
-            deletedRows.push(c.id)
+        matchedStoredIds.add(stored.id)
+
+        // sparse update: only sync fields not manually overridden
+        const overriddenFields = stored.overridden_fields || []
+        const update = {}
+
+        GDOC_SYNCABLE_FIELDS.forEach((field) => {
+            if (
+                !overriddenFields.includes(field) &&
+                isFieldChanged(incoming[field], stored[field])
+            ) {
+                update[field] = incoming[field]
+            }
+        })
+
+        if (!byColorwayId && !overriddenFields.includes('img')) {
+            // matched by name only: colorway_id/img was actually changed in the doc,
+            // resync the identity so future syncs match by colorway_id again
+            update.colorway_id = incoming.colorway_id
+
+            outdatedImages.push(makeImageId(stored))
+        }
+
+        if (!isEmpty(update)) {
+            updateClw[stored.id] = update
         }
     })
 
-    const insertClws = Object.values(insertingMapByColorwayId).map(
-        ({ remote_img, ...rest }) => rest,
-    )
+    // colorways no longer present in google docs; only remove gdoc sourced rows
+    const deletedRows = storedColorways
+        .filter((c) => !matchedStoredIds.has(c.id))
+        .map((c) => {
+            outdatedImages.push(makeImageId(c))
+
+            return c.id
+        })
 
     let modified = false
 
@@ -356,10 +374,7 @@ const updateMakerDatabase = async (tables, options = {}) => {
 
         await Promise.map(
             Object.entries(updateClw),
-            async ([rowKey, data]) => {
-                const [id] = rowKey.split('__')
-                await updateRow(ARTISAN_COLORWAYS_TABLE, id, data)
-            },
+            ([id, data]) => updateRow(ARTISAN_COLORWAYS_TABLE, id, data),
             { concurrency: 1 },
         )
 
