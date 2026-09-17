@@ -117,6 +117,7 @@ const insertRows = async (table, values) => {
     if (dryRun) {
         console.log(
             `[DRY RUN] Would insert ${values.length} rows into ${table}`,
+            values,
         )
 
         return
@@ -328,6 +329,9 @@ const updateMakerDatabase = async (tables, options = {}) => {
         // sparse update: only sync fields not manually overridden
         const overriddenFields = stored.overridden_fields || []
         const update = {}
+
+        // flag so downstream image sync can skip locked images
+        incoming.img_overridden = overriddenFields.includes('img')
 
         GDOC_SYNCABLE_FIELDS.forEach((field) => {
             if (

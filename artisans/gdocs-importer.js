@@ -100,17 +100,19 @@ async function scan(maker) {
         const images = []
         colorways.map((clw) => {
             const filename = makeImageId(clw)
-            if (!existedImages.includes(filename)) {
+            if (!clw.img_overridden && !existedImages.includes(filename)) {
                 images.push([filename, clw.remote_img])
             }
         })
 
-        if (images.length) {
+        if (images.length && !isDryRun) {
             console.log('syncing images', images.length)
 
             await Promise.map(images, (img) => uploadImage(...img), {
                 concurrency: 5,
             })
+        } else if (images.length) {
+            console.log(`[DRY RUN] Would sync ${images.length} images`)
         }
     } catch (error) {
         console.error('catalogue deleted or sth went wrong', id, error.stack)
@@ -122,8 +124,7 @@ async function scan(maker) {
             })
 
             console.log(
-                'maker disabled from google sync and marked deleted',
-                id,
+                `maker "${id}" Google Doc not found (404) — disabled google sync and marked as deleted`,
             )
         }
     }
