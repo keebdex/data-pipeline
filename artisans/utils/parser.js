@@ -1,5 +1,5 @@
 const { format, parse } = require('date-fns')
-const { chunk, flatten, findLast, get, keyBy } = require('lodash')
+const { chunk, flatten, get, keyBy } = require('lodash')
 const { urlSlugify, DELIVERY_BASE_URL } = require('../../utils')
 
 const regex = {
@@ -85,7 +85,6 @@ const parseSculpt = (table, maker_id) => {
         design: null,
         profile: null,
         cast: null,
-        img: null,
     }
 
     let releaseMatch = regex.release.exec(text) || regex.release.exec(subtext)
@@ -346,10 +345,6 @@ const parser = (document, maker_id) => {
             )
 
             sculpt.colorways = colorways.filter((c) => c.img)
-            const last = findLast(sculpt.colorways)
-            if (last) {
-                sculpt.img = last.img
-            }
 
             return sculpt
         } catch (error) {

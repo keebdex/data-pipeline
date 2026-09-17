@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js')
 const Promise = require('bluebird')
 const { writeFileSync } = require('fs')
-const { flatten, difference, map, keyBy, isEmpty, groupBy } = require('lodash')
+const { flatten, map, keyBy, isEmpty, groupBy } = require('lodash')
 const { deleteImage } = require('../../utils/image')
 const {
     ARTISAN_MAKERS_TABLE,
@@ -20,18 +20,6 @@ let dryRun = false
 const makeKeyByColorwayId = (c) =>
     `${c.maker_id}-${c.sculpt_id}-${c.colorway_id}`
 const makeKeyByName = (c) => `${c.maker_id}-${c.sculpt_id}-${c.name}`
-
-const makeSculptKey = (s) => {
-    return [
-        s.maker_id,
-        s.sculpt_id,
-        s.release,
-        s.profile,
-        s.cast,
-        s.design,
-        s.img,
-    ].join()
-}
 
 const makeImageId = (c) =>
     `artisan/${c.maker_id}/${c.sculpt_id}/${c.colorway_id}`
@@ -163,46 +151,49 @@ const updateRow = async (table, id, values) => {
     }
 }
 
+// only these sculpt fields are ever synced from google docs
+const GDOC_SCULPT_SYNCABLE_FIELDS = ['release', 'profile', 'cast', 'design']
+
 const updateSculpts = async (sculpts) => {
     const { data: storedSculpts } = await supabase
         .from(ARTISAN_SCULPTS_TABLE)
         .select()
         .eq('maker_id', sculpts[0].maker_id)
 
-    const incomingKeys = sculpts.map(makeSculptKey)
-    const existedKeys = storedSculpts.map(makeSculptKey)
+    const storedBySculptId = keyBy(storedSculpts, makerSculptId)
 
-    const newKeys = difference(incomingKeys, existedKeys)
-    const changedKeys = difference(existedKeys, incomingKeys)
-
-    const tobeInserted = sculpts.filter((s) =>
-        newKeys.includes(makeSculptKey(s)),
-    )
-    const tobeUpdated = storedSculpts.filter((s) =>
-        changedKeys.includes(makeSculptKey(s)),
-    )
-
-    const insertingMap = keyBy(tobeInserted, makerSculptId)
-
+    const newSculpts = []
     const updateSculpt = {}
-    const deletedSculpts = []
+    const matchedSculptIds = new Set()
 
-    /**
-     * we dont know it's newly added sculpt or just sculpt name is changed
-     * so we accept that and remove old ones
-     */
-    tobeUpdated.forEach((s) => {
-        const key = makerSculptId(s)
-        if (insertingMap[key]) {
-            updateSculpt[s.id] = insertingMap[key]
+    sculpts.forEach((incoming) => {
+        const stored = storedBySculptId[makerSculptId(incoming)]
 
-            delete insertingMap[key]
-        } else {
-            deletedSculpts.push(s)
+        if (!stored) {
+            newSculpts.push(incoming)
+
+            return
+        }
+
+        matchedSculptIds.add(stored.id)
+
+        const update = {}
+
+        GDOC_SCULPT_SYNCABLE_FIELDS.forEach((field) => {
+            if (incoming[field] !== stored[field]) {
+                update[field] = incoming[field]
+            }
+        })
+
+        if (!isEmpty(update)) {
+            updateSculpt[stored.id] = update
         }
     })
 
-    const newSculpts = Object.values(insertingMap)
+    // sculpt_id is a stable identity, so anything unmatched was truly removed
+    const deletedSculpts = storedSculpts.filter(
+        (s) => !matchedSculptIds.has(s.id),
+    )
 
     if (newSculpts.length) {
         await insertRows(ARTISAN_SCULPTS_TABLE, newSculpts)
