@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -28,12 +28,14 @@ export type Database = {
           maker_sculpt_id: string
           name: string
           order: number | null
+          overridden_fields: string[]
           photo_credit: string | null
           price: number | null
           qty: number | null
           release: string | null
           sale_type: Database["public"]["Enums"]["sale_format"] | null
           sculpt_id: string
+          source: string | null
           stem: string[] | null
         }
         Insert: {
@@ -49,12 +51,14 @@ export type Database = {
           maker_sculpt_id: string
           name: string
           order?: number | null
+          overridden_fields?: string[]
           photo_credit?: string | null
           price?: number | null
           qty?: number | null
           release?: string | null
           sale_type?: Database["public"]["Enums"]["sale_format"] | null
           sculpt_id: string
+          source?: string | null
           stem?: string[] | null
         }
         Update: {
@@ -70,12 +74,14 @@ export type Database = {
           maker_sculpt_id?: string
           name?: string
           order?: number | null
+          overridden_fields?: string[]
           photo_credit?: string | null
           price?: number | null
           qty?: number | null
           release?: string | null
           sale_type?: Database["public"]["Enums"]["sale_format"] | null
           sculpt_id?: string
+          source?: string | null
           stem?: string[] | null
         }
         Relationships: [
@@ -212,14 +218,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "sculpts_is_revision_of_fkey"
+            foreignKeyName: "artisan_sculpts_is_revision_of_fkey"
             columns: ["is_revision_of"]
             isOneToOne: false
             referencedRelation: "artisan_sculpts"
             referencedColumns: ["maker_sculpt_id"]
           },
           {
-            foreignKeyName: "sculpts_maker_id_fkey"
+            foreignKeyName: "artisan_sculpts_maker_id_fkey"
             columns: ["maker_id"]
             isOneToOne: false
             referencedRelation: "artisan_makers"
@@ -264,7 +270,7 @@ export type Database = {
           id: number
           message: string | null
           name: string | null
-          resolved: boolean | null
+          resolved: boolean
         }
         Insert: {
           created_at?: string
@@ -272,7 +278,7 @@ export type Database = {
           id?: number
           message?: string | null
           name?: string | null
-          resolved?: boolean | null
+          resolved?: boolean
         }
         Update: {
           created_at?: string
@@ -280,7 +286,7 @@ export type Database = {
           id?: number
           message?: string | null
           name?: string | null
-          resolved?: boolean | null
+          resolved?: boolean
         }
         Relationships: []
       }
@@ -336,9 +342,6 @@ export type Database = {
           description: string | null
           fts: unknown
           id: number
-          mount_style:
-            | Database["public"]["Enums"]["keyboard_mounting_style"]
-            | null
           msrp_price: number | null
           name: string
           order: number
@@ -347,7 +350,6 @@ export type Database = {
             | Database["public"]["Enums"]["keyboard_material"][]
             | null
           release_year: number | null
-          typing_angle: number | null
           variant_specs: boolean | null
           weight_materials:
             | Database["public"]["Enums"]["keyboard_material"][]
@@ -362,9 +364,6 @@ export type Database = {
           description?: string | null
           fts?: unknown
           id?: number
-          mount_style?:
-            | Database["public"]["Enums"]["keyboard_mounting_style"]
-            | null
           msrp_price?: number | null
           name: string
           order?: number
@@ -373,7 +372,6 @@ export type Database = {
             | Database["public"]["Enums"]["keyboard_material"][]
             | null
           release_year?: number | null
-          typing_angle?: number | null
           variant_specs?: boolean | null
           weight_materials?:
             | Database["public"]["Enums"]["keyboard_material"][]
@@ -388,9 +386,6 @@ export type Database = {
           description?: string | null
           fts?: unknown
           id?: number
-          mount_style?:
-            | Database["public"]["Enums"]["keyboard_mounting_style"]
-            | null
           msrp_price?: number | null
           name?: string
           order?: number
@@ -399,7 +394,6 @@ export type Database = {
             | Database["public"]["Enums"]["keyboard_material"][]
             | null
           release_year?: number | null
-          typing_angle?: number | null
           variant_specs?: boolean | null
           weight_materials?:
             | Database["public"]["Enums"]["keyboard_material"][]
@@ -538,11 +532,17 @@ export type Database = {
           created_at: string
           derived_from: string | null
           description: string | null
+          form_factor: Database["public"]["Enums"]["keyboard_form_factor"]
           fts: unknown
           id: number
-          layout: Database["public"]["Enums"]["keyboard_layout"]
+          mount_styles:
+            | Database["public"]["Enums"]["keyboard_mounting_style"][]
+            | null
           name: string
           slug: string
+          top_case_styles:
+            | Database["public"]["Enums"]["keyboard_top_case_style"][]
+            | null
           typing_angle: number | null
         }
         Insert: {
@@ -551,11 +551,17 @@ export type Database = {
           created_at?: string
           derived_from?: string | null
           description?: string | null
+          form_factor: Database["public"]["Enums"]["keyboard_form_factor"]
           fts?: unknown
           id?: number
-          layout: Database["public"]["Enums"]["keyboard_layout"]
+          mount_styles?:
+            | Database["public"]["Enums"]["keyboard_mounting_style"][]
+            | null
           name: string
           slug: string
+          top_case_styles?:
+            | Database["public"]["Enums"]["keyboard_top_case_style"][]
+            | null
           typing_angle?: number | null
         }
         Update: {
@@ -564,11 +570,17 @@ export type Database = {
           created_at?: string
           derived_from?: string | null
           description?: string | null
+          form_factor?: Database["public"]["Enums"]["keyboard_form_factor"]
           fts?: unknown
           id?: number
-          layout?: Database["public"]["Enums"]["keyboard_layout"]
+          mount_styles?:
+            | Database["public"]["Enums"]["keyboard_mounting_style"][]
+            | null
           name?: string
           slug?: string
+          top_case_styles?:
+            | Database["public"]["Enums"]["keyboard_top_case_style"][]
+            | null
           typing_angle?: number | null
         }
         Relationships: [
@@ -1020,7 +1032,7 @@ export type Database = {
         | "Raw"
         | "PVD"
         | "Mirror"
-      keyboard_layout:
+      keyboard_form_factor:
         | "40%"
         | "60%"
         | "65%"
@@ -1032,8 +1044,7 @@ export type Database = {
         | "96%"
         | "Alice"
         | "Arisu"
-        | "HHKB"
-        | "WKL"
+        | "Numpad"
       keyboard_material:
         | "Aluminum"
         | "Brass"
@@ -1044,6 +1055,7 @@ export type Database = {
         | "POM"
         | "Carbon Fiber"
         | "Wood"
+        | "Polypropylene"
       keyboard_mounting_style:
         | "Tray"
         | "Top"
@@ -1061,6 +1073,7 @@ export type Database = {
         | "Hotswap + RGB"
         | "Bluetooth"
         | "Wired"
+      keyboard_top_case_style: "WK" | "WKL" | "HHKB" | "F13 WK" | "F13 WKL"
       keyset_color_matching_system: "GMK" | "SP" | "Pantone" | "RAL" | "Custom"
       keyset_profile:
         | "Cherry"
@@ -1107,12 +1120,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1136,11 +1149,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1161,11 +1174,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1186,11 +1199,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1203,11 +1216,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1242,7 +1255,7 @@ export const Constants = {
         "PVD",
         "Mirror",
       ],
-      keyboard_layout: [
+      keyboard_form_factor: [
         "40%",
         "60%",
         "65%",
@@ -1254,8 +1267,7 @@ export const Constants = {
         "96%",
         "Alice",
         "Arisu",
-        "HHKB",
-        "WKL",
+        "Numpad",
       ],
       keyboard_material: [
         "Aluminum",
@@ -1267,6 +1279,7 @@ export const Constants = {
         "POM",
         "Carbon Fiber",
         "Wood",
+        "Polypropylene",
       ],
       keyboard_mounting_style: [
         "Tray",
@@ -1287,6 +1300,7 @@ export const Constants = {
         "Bluetooth",
         "Wired",
       ],
+      keyboard_top_case_style: ["WK", "WKL", "HHKB", "F13 WK", "F13 WKL"],
       keyset_color_matching_system: ["GMK", "SP", "Pantone", "RAL", "Custom"],
       keyset_profile: [
         "Cherry",
