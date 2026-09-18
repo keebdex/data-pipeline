@@ -1,6 +1,5 @@
 const axios = require('axios')
 const { crc32 } = require('crc')
-const { findLast } = require('lodash')
 const { urlSlugify } = require('../../utils')
 const { format, parse } = require('date-fns')
 
@@ -37,6 +36,8 @@ const scraper = async () => {
                     `${maker_id}-${sculpt_id}-${urlSlugify(name)}-${order}`,
                 ).toString(16),
                 order,
+                qty: null,
+                photo_credit: null,
             }
         })
 
@@ -46,7 +47,9 @@ const scraper = async () => {
             colorways,
             maker_id,
             sculpt_id,
-            img: findLast(colorways).img,
+            profile: null,
+            cast: null,
+            design: null,
         }
     })
 

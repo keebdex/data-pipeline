@@ -113,6 +113,9 @@ function extractSales(html, baseUrl = SHOP_URL) {
             sculpt_id,
             sale_type: SALE_FORMATS.get(badge) || null,
             colorway_id: crc32(colorway_key).toString(16),
+            release: null,
+            qty: null,
+            photo_credit: null,
             // order: index,
             // stem,
         })
@@ -133,7 +136,10 @@ const scraper = async () => {
                 maker_id,
                 sculpt_id,
                 name: sculpt_id.charAt(0).toUpperCase() + sculpt_id.slice(1),
-                img: colorways[0]?.img || null,
+                release: null,
+                profile: null,
+                cast: null,
+                design: null,
                 colorways: colorways.reverse(),
             }),
         )

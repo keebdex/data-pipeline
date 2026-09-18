@@ -1,7 +1,6 @@
 const { crc32 } = require('crc')
 const axios = require('axios')
 const cheerio = require('cheerio')
-const { findLast } = require('lodash')
 const { urlSlugify } = require('../../utils')
 
 const baseUrl = 'https://alphakeycaps.com'
@@ -43,6 +42,9 @@ const sculptScraper = async (sculpt_id, sculpt_name) => {
                 maker_id,
                 sculpt_id,
                 sale_type: null,
+                release: null,
+                qty: null,
+                photo_credit: null,
                 colorway_id: crc32(colorway_key).toString(16),
                 order: index,
                 stem,
@@ -85,7 +87,10 @@ const scraper = async () => {
                 maker_id,
                 sculpt_id,
                 colorways,
-                img: findLast(colorways).img,
+                release: null,
+                profile: null,
+                cast: null,
+                design: null,
             }
         }),
     )
