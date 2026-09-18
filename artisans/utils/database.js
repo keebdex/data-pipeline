@@ -86,11 +86,17 @@ const getColorways = async (maker_id, source, rows = []) => {
     return updatedRows
 }
 
-const getSculpts = async (maker_id) => {
-    const { data, error } = await supabase
+const getSculpts = async (maker_id, source) => {
+    let query = supabase
         .from(ARTISAN_SCULPTS_TABLE)
         .select('*, total_colorways:artisan_colorways(count)')
         .eq('maker_id', maker_id)
+
+    if (source) {
+        query = query.eq('source', source)
+    }
+
+    const { data, error } = await query
 
     if (error) {
         console.warn(`get ${ARTISAN_SCULPTS_TABLE} error`, maker_id, error)
@@ -155,10 +161,7 @@ const updateRow = async (table, id, values) => {
 const GDOC_SCULPT_SYNCABLE_FIELDS = ['release', 'profile', 'cast', 'design']
 
 const updateSculpts = async (sculpts) => {
-    const { data: storedSculpts } = await supabase
-        .from(ARTISAN_SCULPTS_TABLE)
-        .select()
-        .eq('maker_id', sculpts[0].maker_id)
+    const storedSculpts = await getSculpts(sculpts[0].maker_id, 'gdoc')
 
     const storedBySculptId = keyBy(storedSculpts, makerSculptId)
 
@@ -170,7 +173,11 @@ const updateSculpts = async (sculpts) => {
         const stored = storedBySculptId[makerSculptId(incoming)]
 
         if (!stored) {
-            newSculpts.push(incoming)
+            newSculpts.push({
+                ...incoming,
+                source: 'gdoc',
+                overridden_fields: [],
+            })
 
             return
         }
@@ -178,9 +185,14 @@ const updateSculpts = async (sculpts) => {
         matchedSculptIds.add(stored.id)
 
         const update = {}
+        const overriddenFields = stored.overridden_fields || []
 
         GDOC_SCULPT_SYNCABLE_FIELDS.forEach((field) => {
-            if (incoming[field] !== stored[field]) {
+            if (
+                !overriddenFields.includes(field) &&
+                incoming[field] !== undefined &&
+                incoming[field] !== stored[field]
+            ) {
                 update[field] = incoming[field]
             }
         })
@@ -190,7 +202,6 @@ const updateSculpts = async (sculpts) => {
         }
     })
 
-    // sculpt_id is a stable identity, so anything unmatched was truly removed
     const deletedSculpts = storedSculpts.filter(
         (s) => !matchedSculptIds.has(s.id),
     )
@@ -252,7 +263,7 @@ const updateMakerDatabase = async (tables, options = {}) => {
     const storedColorways = await getColorways(maker_id, 'gdoc')
 
     if (preserve_missing) {
-        const storedSculpts = await getSculpts(maker_id)
+        const storedSculpts = await getSculpts(maker_id, 'gdoc')
         const incomingSculptIds = sculpts.map((sculpt) => sculpt.sculpt_id)
         const existingColorwayKeys = incomingColorways.map((colorway) =>
             makeKeyByColorwayId(colorway),

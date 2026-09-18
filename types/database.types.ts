@@ -175,9 +175,11 @@ export type Database = {
           maker_id: string
           maker_sculpt_id: string
           name: string
+          overridden_fields: string[]
           profile: string | null
           release: string | null
           sculpt_id: string
+          source: string
           story: string | null
         }
         Insert: {
@@ -193,9 +195,11 @@ export type Database = {
           maker_id: string
           maker_sculpt_id: string
           name: string
+          overridden_fields?: string[]
           profile?: string | null
           release?: string | null
           sculpt_id: string
+          source: string
           story?: string | null
         }
         Update: {
@@ -211,9 +215,11 @@ export type Database = {
           maker_id?: string
           maker_sculpt_id?: string
           name?: string
+          overridden_fields?: string[]
           profile?: string | null
           release?: string | null
           sculpt_id?: string
+          source?: string
           story?: string | null
         }
         Relationships: [
