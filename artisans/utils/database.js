@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js')
 const Promise = require('bluebird')
 const { writeFileSync } = require('fs')
-const { flatten, map, keyBy, isEmpty, groupBy } = require('lodash')
+const { flatten, map, keyBy, isEmpty, groupBy, mapValues } = require('lodash')
 const { deleteImage } = require('../../utils/image')
 const {
     ARTISAN_MAKERS_TABLE,
@@ -35,6 +35,10 @@ const GDOC_SYNCABLE_FIELDS = [
     'img',
     'stem',
 ]
+
+// order is always driven by the google doc's table position - it is never
+// user-overridable, so it syncs even for fields the user has locked
+const GDOC_ALWAYS_SYNCED_FIELDS = ['order']
 
 // array fields (e.g. stem) must be compared by content, not reference/order
 const isFieldChanged = (incoming, stored) => {
@@ -305,7 +309,27 @@ const updateMakerDatabase = async (tables, options = {}) => {
     const colorways = incomingColorways
 
     const storedByColorwayId = keyBy(storedColorways, makeKeyByColorwayId)
-    const storedByName = keyBy(storedColorways, makeKeyByName)
+
+    // Only orphaned rows (colorway_id no longer present in this sync) can be
+    // matched by name, so a genuinely new colorway never steals an unrelated,
+    // unchanged row that happens to share the same name.
+    const colorwayIdMatchedStoredIds = new Set(
+        colorways
+            .map(
+                (incoming) => storedByColorwayId[makeKeyByColorwayId(incoming)],
+            )
+            .filter(Boolean)
+            .map((s) => s.id),
+    )
+    const orphanedColorways = storedColorways.filter(
+        (c) => !colorwayIdMatchedStoredIds.has(c.id),
+    )
+
+    // groupBy (not keyBy) so duplicate/empty names don't collapse to one row
+    const nameCandidates = mapValues(
+        groupBy(orphanedColorways, makeKeyByName),
+        (rows) => [...rows],
+    )
 
     const insertClws = []
     const updateClw = {}
@@ -314,8 +338,18 @@ const updateMakerDatabase = async (tables, options = {}) => {
 
     colorways.forEach((incoming) => {
         const byColorwayId = storedByColorwayId[makeKeyByColorwayId(incoming)]
-        const byName = storedByName[makeKeyByName(incoming)]
-        const stored = byColorwayId || byName
+        let stored = byColorwayId
+
+        if (!stored) {
+            // colorway_id changed in the doc; fall back to an unclaimed
+            // orphaned row with the same name
+            const candidates = nameCandidates[makeKeyByName(incoming)] || []
+            const idx = candidates.findIndex((c) => !matchedStoredIds.has(c.id))
+
+            if (idx !== -1) {
+                stored = candidates[idx]
+            }
+        }
 
         if (!stored) {
             // not found in DB, insert as a new google docs sourced row
@@ -340,6 +374,14 @@ const updateMakerDatabase = async (tables, options = {}) => {
                 !overriddenFields.includes(field) &&
                 isFieldChanged(incoming[field], stored[field])
             ) {
+                update[field] = incoming[field]
+            }
+        })
+
+        // order always comes from the doc's table position, regardless of
+        // whether the user has locked this field via overridden_fields
+        GDOC_ALWAYS_SYNCED_FIELDS.forEach((field) => {
+            if (isFieldChanged(incoming[field], stored[field])) {
                 update[field] = incoming[field]
             }
         })
