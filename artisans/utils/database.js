@@ -36,9 +36,9 @@ const GDOC_SYNCABLE_FIELDS = [
     'stem',
 ]
 
-// order is always driven by the google doc's table position - it is never
-// user-overridable, so it syncs even for fields the user has locked
-const GDOC_ALWAYS_SYNCED_FIELDS = ['order']
+// order and source_document_id are never user-overridable, so they sync
+// even for rows where the user has locked other fields via overridden_fields
+const GDOC_ALWAYS_SYNCED_FIELDS = ['order', 'source_document_id']
 
 // array fields (e.g. stem) must be compared by content, not reference/order
 const isFieldChanged = (incoming, stored) => {
@@ -164,6 +164,9 @@ const updateRow = async (table, id, values) => {
 // only these sculpt fields are ever synced from google docs
 const GDOC_SCULPT_SYNCABLE_FIELDS = ['release', 'profile', 'cast', 'design']
 
+// source_document_id is never user-overridable, so it syncs unconditionally
+const GDOC_SCULPT_ALWAYS_SYNCED_FIELDS = ['source_document_id']
+
 const updateSculpts = async (sculpts) => {
     const storedSculpts = await getSculpts(sculpts[0].maker_id, 'gdoc')
 
@@ -194,6 +197,15 @@ const updateSculpts = async (sculpts) => {
         GDOC_SCULPT_SYNCABLE_FIELDS.forEach((field) => {
             if (
                 !overriddenFields.includes(field) &&
+                incoming[field] !== undefined &&
+                incoming[field] !== stored[field]
+            ) {
+                update[field] = incoming[field]
+            }
+        })
+
+        GDOC_SCULPT_ALWAYS_SYNCED_FIELDS.forEach((field) => {
+            if (
                 incoming[field] !== undefined &&
                 incoming[field] !== stored[field]
             ) {
@@ -249,7 +261,10 @@ const updateMakerDatabase = async (tables, options = {}) => {
     }
 
     const { maker_id } = tables[0]
-    const { preserve_missing = false } = options
+    // preserve_missing: `tables` is a partial sync (e.g. a doc failed to
+    // load) - don't delete rows just because they're absent from it, unless
+    // available_document_ids shows their doc was actually synced this run
+    const { preserve_missing = false, available_document_ids = [] } = options
 
     if (isDevelopment) {
         writeFileSync(
@@ -273,12 +288,20 @@ const updateMakerDatabase = async (tables, options = {}) => {
             makeKeyByColorwayId(colorway),
         )
 
+        // keep sculpts belonging to a doc that wasn't synced this run
         sculpts = sculpts.concat(
             storedSculpts.filter(
-                (sculpt) => !incomingSculptIds.includes(sculpt.sculpt_id),
+                (sculpt) =>
+                    !incomingSculptIds.includes(sculpt.sculpt_id) &&
+                    (!sculpt.source_document_id ||
+                        !available_document_ids.includes(
+                            sculpt.source_document_id,
+                        )),
             ),
         )
 
+        // stored colorway count per sculpt, so brand-new colorways get an
+        // order after the existing ones instead of clashing with them
         const sculptLengthMap = Object.entries(
             groupBy(storedColorways, (s) => s.sculpt_id),
         ).reduce((prev, [sculpt_id, clws]) => {
@@ -287,18 +310,36 @@ const updateMakerDatabase = async (tables, options = {}) => {
             return prev
         }, {})
 
+        // a sculpt's colorways can span multiple docs, so a partial sync's
+        // order is only trustworthy for genuinely new colorways; existing
+        // ones keep their stored order instead of a possibly-local value
+        const storedColorwayByKey = keyBy(storedColorways, makeKeyByColorwayId)
+
         incomingColorways.forEach((colorway, idx) => {
+            const stored = storedColorwayByKey[makeKeyByColorwayId(colorway)]
+
+            if (stored) {
+                colorway.order = stored.order
+
+                return
+            }
+
             const length = sculptLengthMap[colorway.sculpt_id] || 0
             colorway.order = length + idx
         })
 
+        // keep non-deleted colorways belonging to a doc that wasn't synced
         incomingColorways.push(
             ...storedColorways.filter(
                 (colorway) =>
                     !colorway.deleted &&
                     !existingColorwayKeys.includes(
                         makeKeyByColorwayId(colorway),
-                    ),
+                    ) &&
+                    (!colorway.source_document_id ||
+                        !available_document_ids.includes(
+                            colorway.source_document_id,
+                        )),
             ),
         )
     }
@@ -310,9 +351,9 @@ const updateMakerDatabase = async (tables, options = {}) => {
 
     const storedByColorwayId = keyBy(storedColorways, makeKeyByColorwayId)
 
-    // Only orphaned rows (colorway_id no longer present in this sync) can be
-    // matched by name, so a genuinely new colorway never steals an unrelated,
-    // unchanged row that happens to share the same name.
+    // only orphaned rows (colorway_id unmatched by any incoming row) are
+    // valid name-fallback candidates, so a new colorway can't steal an
+    // unrelated, unchanged row that just happens to share its name
     const colorwayIdMatchedStoredIds = new Set(
         colorways
             .map(
@@ -325,7 +366,8 @@ const updateMakerDatabase = async (tables, options = {}) => {
         (c) => !colorwayIdMatchedStoredIds.has(c.id),
     )
 
-    // groupBy (not keyBy) so duplicate/empty names don't collapse to one row
+    // per-name queues (not keyBy) so duplicate/empty names don't collapse
+    // into one candidate and get claimed by more than one incoming row
     const nameCandidates = mapValues(
         groupBy(orphanedColorways, makeKeyByName),
         (rows) => [...rows],
@@ -341,7 +383,7 @@ const updateMakerDatabase = async (tables, options = {}) => {
         let stored = byColorwayId
 
         if (!stored) {
-            // colorway_id changed in the doc; fall back to an unclaimed
+            // colorway_id changed in the doc - fall back to an unclaimed
             // orphaned row with the same name
             const candidates = nameCandidates[makeKeyByName(incoming)] || []
             const idx = candidates.findIndex((c) => !matchedStoredIds.has(c.id))
@@ -378,8 +420,7 @@ const updateMakerDatabase = async (tables, options = {}) => {
             }
         })
 
-        // order always comes from the doc's table position, regardless of
-        // whether the user has locked this field via overridden_fields
+        // these fields sync regardless of overridden_fields
         GDOC_ALWAYS_SYNCED_FIELDS.forEach((field) => {
             if (isFieldChanged(incoming[field], stored[field])) {
                 update[field] = incoming[field]

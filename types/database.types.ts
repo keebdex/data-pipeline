@@ -36,7 +36,12 @@ export type Database = {
           sale_type: Database["public"]["Enums"]["sale_format"] | null
           sculpt_id: string
           source: string | null
+          source_document_id: string | null
+          status: Database["public"]["Enums"]["review_status"] | null
           stem: string[] | null
+          submitted_by: string | null
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
           colorway_id: string
@@ -59,7 +64,12 @@ export type Database = {
           sale_type?: Database["public"]["Enums"]["sale_format"] | null
           sculpt_id: string
           source?: string | null
+          source_document_id?: string | null
+          status?: Database["public"]["Enums"]["review_status"] | null
           stem?: string[] | null
+          submitted_by?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
           colorway_id?: string
@@ -82,9 +92,28 @@ export type Database = {
           sale_type?: Database["public"]["Enums"]["sale_format"] | null
           sculpt_id?: string
           source?: string | null
+          source_document_id?: string | null
+          status?: Database["public"]["Enums"]["review_status"] | null
           stem?: string[] | null
+          submitted_by?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "artisan_colorways_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "artisan_colorways_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "colorways_maker_id_fkey"
             columns: ["maker_id"]
@@ -180,6 +209,7 @@ export type Database = {
           release: string | null
           sculpt_id: string
           source: string
+          source_document_id: string | null
           story: string | null
         }
         Insert: {
@@ -200,6 +230,7 @@ export type Database = {
           release?: string | null
           sculpt_id: string
           source: string
+          source_document_id?: string | null
           story?: string | null
         }
         Update: {
@@ -220,6 +251,7 @@ export type Database = {
           release?: string | null
           sculpt_id?: string
           source?: string
+          source_document_id?: string | null
           story?: string | null
         }
         Relationships: [
@@ -545,11 +577,15 @@ export type Database = {
             | Database["public"]["Enums"]["keyboard_mounting_style"][]
             | null
           name: string
+          review_status: Database["public"]["Enums"]["review_status"] | null
           slug: string
+          submitted_by: string | null
           top_case_styles:
             | Database["public"]["Enums"]["keyboard_top_case_style"][]
             | null
           typing_angle: number | null
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
           brand_keyboard_slug: string
@@ -564,11 +600,15 @@ export type Database = {
             | Database["public"]["Enums"]["keyboard_mounting_style"][]
             | null
           name: string
+          review_status?: Database["public"]["Enums"]["review_status"] | null
           slug: string
+          submitted_by?: string | null
           top_case_styles?:
             | Database["public"]["Enums"]["keyboard_top_case_style"][]
             | null
           typing_angle?: number | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
           brand_keyboard_slug?: string
@@ -583,11 +623,15 @@ export type Database = {
             | Database["public"]["Enums"]["keyboard_mounting_style"][]
             | null
           name?: string
+          review_status?: Database["public"]["Enums"]["review_status"] | null
           slug?: string
+          submitted_by?: string | null
           top_case_styles?:
             | Database["public"]["Enums"]["keyboard_top_case_style"][]
             | null
           typing_angle?: number | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
           {
@@ -603,6 +647,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "keyboards"
             referencedColumns: ["brand_keyboard_slug"]
+          },
+          {
+            foreignKeyName: "keyboards_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "keyboards_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -742,7 +800,10 @@ export type Database = {
           sculpt: string | null
           start_date: string | null
           status: string | null
+          submitted_by: string | null
           url: string | null
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
           created_at?: string
@@ -762,7 +823,10 @@ export type Database = {
           sculpt?: string | null
           start_date?: string | null
           status?: string | null
+          submitted_by?: string | null
           url?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
           created_at?: string
@@ -782,7 +846,10 @@ export type Database = {
           sculpt?: string | null
           start_date?: string | null
           status?: string | null
+          submitted_by?: string | null
           url?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
           {
@@ -790,6 +857,20 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "keyset_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "keysets_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "keysets_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1014,7 +1095,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_manage: { Args: { scope: string }; Returns: boolean }
     }
     Enums: {
       currency:

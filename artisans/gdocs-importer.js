@@ -50,21 +50,83 @@ async function scan(maker) {
     let contributors = maker.contributors || []
 
     try {
-        const files = await Promise.all(document_ids.map(downloadDoc))
+        // download each doc independently so one failure doesn't sink the
+        // rest (bluebird's Promise, hence .reflect() over allSettled)
+        const inspections = await Promise.map(document_ids, (docId) =>
+            Promise.resolve(downloadDoc(docId)).reflect(),
+        )
 
-        const multi = document_ids.length > 1
+        const availableDocumentIds = []
+        const files = []
+        let hasMissingDoc = false
 
-        const documents = files.map((file) => parser(file, id))
+        inspections.forEach((inspection, idx) => {
+            if (inspection.isFulfilled()) {
+                files.push(inspection.value())
+                availableDocumentIds.push(document_ids[idx])
+
+                return
+            }
+
+            const reason = inspection.reason()
+
+            if (reason?.code === 404) {
+                // doc was deleted - skip it, keep syncing the rest
+                hasMissingDoc = true
+
+                console.warn(
+                    `doc ${document_ids[idx]} not found (404) for maker "${id}", skipping it`,
+                )
+            } else {
+                // unexpected error - bail out, outer catch logs it
+                throw reason
+            }
+        })
+
+        if (!files.length) {
+            // every doc for this maker is gone
+            await updateMetadata(id, {
+                disable_google_sync: true,
+                deleted: true,
+            })
+
+            console.log(
+                `maker "${id}" Google Doc not found (404) — disabled google sync and marked as deleted`,
+            )
+
+            return
+        }
+
+        const multi = files.length > 1
+
+        const documents = files.map((file, idx) => {
+            const parsed = parser(file, id)
+            const source_document_id = availableDocumentIds[idx]
+
+            // tag each sculpt/colorway with the doc it came from
+            Object.values(parsed).forEach((sculpt) => {
+                sculpt.source_document_id = source_document_id
+                ;(sculpt.colorways || []).forEach((colorway) => {
+                    colorway.source_document_id = source_document_id
+                })
+            })
+
+            return parsed
+        })
         const catalogue = multi
             ? deepmerge.all(documents, { customMerge })
             : documents[0]
 
         const database = Object.values(catalogue)
 
-        const { modified, colorways } = await updateMakerDatabase(database)
+        // partial sync: don't delete rows that just belong to a missing doc
+        const { modified, colorways } = await updateMakerDatabase(database, {
+            preserve_missing: hasMissingDoc,
+            available_document_ids: availableDocumentIds,
+        })
 
         if (modified) {
-            const fileId = findLast(document_ids)
+            const fileId = findLast(availableDocumentIds)
             const file = await getFile(fileId)
 
             if (file?.capabilities?.canReadRevisions) {
@@ -115,9 +177,13 @@ async function scan(maker) {
             console.log(`[DRY RUN] Would sync ${images.length} images`)
         }
     } catch (error) {
-        console.error('catalogue deleted or sth went wrong', id, error.stack)
+        console.error(
+            'catalogue deleted or sth went wrong',
+            id,
+            error?.stack || error,
+        )
 
-        if (error.code === 404) {
+        if (error?.code === 404) {
             await updateMetadata(id, {
                 disable_google_sync: true,
                 deleted: true,
