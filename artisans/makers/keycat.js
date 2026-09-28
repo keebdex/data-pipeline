@@ -117,20 +117,47 @@ function extractSales(html, baseUrl = SHOP_URL) {
             qty: null,
             photo_credit: null,
             source_document_id: SHOP_URL,
-            // order: index,
-            // stem,
+            stem: null,
         })
     })
 
-    return items
+    // Extract the URL of the next page from the WooCommerce pagination (if available)
+    const nextPageUrl = $('a.next.page-number').attr('href') || null
+
+    return { items, nextPageUrl }
 }
 
 const scraper = async () => {
     try {
-        const html = await axios.get(SHOP_URL).then((res) => res.data)
-        const sales = extractSales(html)
+        let currentUrl = SHOP_URL
+        let allSales = []
+        let foundTarget = false
 
-        const sculpts = groupBy(sales, 'sculpt_id')
+        while (currentUrl && !foundTarget) {
+            console.log(`Fetching: ${currentUrl}`)
+            const res = await axios.get(currentUrl)
+            const { items, nextPageUrl } = extractSales(res.data, currentUrl)
+
+            if (items.length === 0) {
+                break
+            }
+
+            for (const item of items) {
+                // Check the stopping condition: the colorway name is "Pink Camo" (case-insensitive)
+                if (item.name.toLowerCase() === 'pink camo') {
+                    foundTarget = true
+                    // allSales.pop()
+                    break
+                }
+
+                allSales.push(item)
+            }
+
+            // Update the current URL to the next page unless the target colorway has been found
+            currentUrl = foundTarget ? null : nextPageUrl
+        }
+
+        const sculpts = groupBy(allSales, 'sculpt_id')
 
         const tables = Object.entries(sculpts).map(
             ([sculpt_id, colorways]) => ({
