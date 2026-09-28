@@ -8,10 +8,12 @@ const maker_id = 'alpha-keycaps'
 
 const topre = '(T)'
 
+const sculptUrl = (sculpt_id) => `${baseUrl}/${sculpt_id}`
+
 const sculptScraper = async (sculpt_id, sculpt_name) => {
     const { data } = await axios({
         method: 'get',
-        url: `${baseUrl}/${sculpt_id}`,
+        url: sculptUrl(sculpt_id),
     })
 
     const $ = cheerio.load(data)
@@ -48,6 +50,7 @@ const sculptScraper = async (sculpt_id, sculpt_name) => {
                 colorway_id: crc32(colorway_key).toString(16),
                 order: index,
                 stem,
+                source_document_id: sculptUrl(sculpt_id),
             }
         })
         .get()
@@ -87,6 +90,7 @@ const scraper = async () => {
                 maker_id,
                 sculpt_id,
                 colorways,
+                source_document_id: sculptUrl(sculpt_id),
                 release: null,
                 profile: null,
                 cast: null,

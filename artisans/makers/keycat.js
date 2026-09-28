@@ -116,6 +116,7 @@ function extractSales(html, baseUrl = SHOP_URL) {
             release: null,
             qty: null,
             photo_credit: null,
+            source_document_id: SHOP_URL,
             // order: index,
             // stem,
         })
@@ -141,6 +142,7 @@ const scraper = async () => {
                 cast: null,
                 design: null,
                 colorways: colorways.reverse(),
+                source_document_id: SHOP_URL,
             }),
         )
 

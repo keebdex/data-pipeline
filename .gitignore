@@ -1,5 +1,5 @@
-# Created by https://www.toptal.com/developers/gitignore/api/node,macos,linux,windows
-# Edit at https://www.toptal.com/developers/gitignore?templates=node,macos,linux,windows
+# Created by https://www.toptal.com/developers/gitignore/api/node,linux,macos,windows
+# Edit at https://www.toptal.com/developers/gitignore?templates=node,linux,macos,windows
 
 ### Linux ###
 *~
@@ -215,8 +215,12 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-# End of https://www.toptal.com/developers/gitignore/api/node,macos,linux,windows
+# AI / Agent local working files
+.ai/
+.ai-*.md
 
+# Local, generated, environment-specific, temporary and sensitive files
 db/
-existed_images.json
 keebdex.json
+
+# End of https://www.toptal.com/developers/gitignore/api/node,linux,macos,windows
