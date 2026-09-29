@@ -167,8 +167,8 @@ const GDOC_SCULPT_SYNCABLE_FIELDS = ['release', 'profile', 'cast', 'design']
 // source_document_id is never user-overridable, so it syncs unconditionally
 const GDOC_SCULPT_ALWAYS_SYNCED_FIELDS = ['source_document_id']
 
-const updateSculpts = async (sculpts) => {
-    const storedSculpts = await getSculpts(sculpts[0].maker_id, 'gdoc')
+const updateSculpts = async (sculpts, source) => {
+    const storedSculpts = await getSculpts(sculpts[0].maker_id, source)
 
     const storedBySculptId = keyBy(storedSculpts, makerSculptId)
 
@@ -182,7 +182,7 @@ const updateSculpts = async (sculpts) => {
         if (!stored) {
             newSculpts.push({
                 ...incoming,
-                source: 'gdoc',
+                source,
                 overridden_fields: [],
             })
 
@@ -263,8 +263,14 @@ const updateMakerDatabase = async (tables, options = {}) => {
     const { maker_id } = tables[0]
     // preserve_missing: `tables` is a partial sync (e.g. a doc failed to
     // load) - don't delete rows just because they're absent from it, unless
-    // available_document_ids shows their doc was actually synced this run
-    const { preserve_missing = false, available_document_ids = [] } = options
+    // available_document_ids shows their doc was actually synced this run.
+    // source scopes reads/writes to this entry point's own rows, so gdoc
+    // and scraper syncs for the same maker never delete each other's data
+    const {
+        preserve_missing = false,
+        available_document_ids = [],
+        source = 'gdoc',
+    } = options
 
     if (isDevelopment) {
         writeFileSync(
@@ -279,10 +285,10 @@ const updateMakerDatabase = async (tables, options = {}) => {
     // update sculpts
     let sculpts = tables.map(({ colorways, ...rest }) => rest)
     const incomingColorways = flatten(map(tables, 'colorways'))
-    const storedColorways = await getColorways(maker_id, 'gdoc')
+    const storedColorways = await getColorways(maker_id, source)
 
     if (preserve_missing) {
-        const storedSculpts = await getSculpts(maker_id, 'gdoc')
+        const storedSculpts = await getSculpts(maker_id, source)
         const incomingSculptIds = sculpts.map((sculpt) => sculpt.sculpt_id)
         const existingColorwayKeys = incomingColorways.map((colorway) =>
             makeKeyByColorwayId(colorway),
@@ -344,7 +350,7 @@ const updateMakerDatabase = async (tables, options = {}) => {
         )
     }
 
-    await updateSculpts(sculpts)
+    await updateSculpts(sculpts, source)
 
     // update colorways
     const colorways = incomingColorways
@@ -397,7 +403,7 @@ const updateMakerDatabase = async (tables, options = {}) => {
             // not found in DB, insert as a new google docs sourced row
             const { remote_img, ...rest } = incoming
 
-            insertClws.push({ ...rest, source: 'gdoc', overridden_fields: [] })
+            insertClws.push({ ...rest, source, overridden_fields: [] })
 
             return
         }

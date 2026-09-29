@@ -9,13 +9,7 @@ const {
     setDryRun,
 } = require('./utils/database')
 const { uploadImage, getListImages } = require('../utils/image')
-const { DELIVERY_BASE_URL } = require('../utils')
-
-/**
- * List of makers that are known to have incomplete data
- * and should not have missing items removed from the database
- */
-const PARTIAL_MAKERS = new Set(['keycat'])
+const { DELIVERY_BASE_URL, PARTIAL_MAKERS } = require('../utils')
 
 // Check for dry-run flag from command line arguments
 const isDryRun = process.argv.includes('--dry-run')
@@ -84,6 +78,7 @@ function scan(filename) {
         .then((tables) =>
             updateMakerDatabase(tables, {
                 preserve_missing: PARTIAL_MAKERS.has(maker_id),
+                source: 'scraper',
             }),
         )
         .then(async ({ colorways }) => {

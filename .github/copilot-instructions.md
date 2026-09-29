@@ -30,16 +30,18 @@ directly with `node` (see `package.json` scripts) or scheduled via
 
 ## Data ownership model (important — don't break this)
 
-Artisan sculpts and colorways have a `source` column (`'gdoc'` for rows imported by
-this pipeline, from Google Docs and `maker-scraper.js` alike; `'keebdex'` for rows
-added through the dashboard) and an
+Artisan sculpts and colorways have a `source` column (`'gdoc'` for the Google Docs importer, `'scraper'` for `maker-scraper.js`, `'keebdex'`
+for rows added through the dashboard) and an
 `overridden_fields` string array:
 
-- `source: 'gdoc'` rows are the ones this pipeline owns. Reads in the sync are scoped
-  to them (`getColorways` / `getSculpts` take a `source` filter). Updates only ever
-  patch the fields listed in `GDOC_SYNCABLE_FIELDS` (colorways) /
+- `updateMakerDatabase(tables, { source })` (default `'gdoc'`) scopes every read and
+  write to that source: it only ever sees, matches against, updates, or deletes rows
+  with that exact `source`. This is what lets a gdoc sync and a scraper sync for the
+  same maker coexist without deleting each other's rows — each is blind to the other's
+  data. `maker-scraper.js` passes `source: 'scraper'`; don't let it default to `'gdoc'`.
+  Updates only ever patch the fields listed in `GDOC_SYNCABLE_FIELDS` (colorways) /
   `GDOC_SCULPT_SYNCABLE_FIELDS` (sculpts) in `database.js` — never write fields outside
-  the allow-lists.
+  the allow-lists, regardless of source.
 - Within `GDOC_*_SYNCABLE_FIELDS`, a field is skipped if it's present in that row's
   `overridden_fields` (the dashboard has manually locked it).
 - `GDOC_ALWAYS_SYNCED_FIELDS` (colorways: `order`, `source_document_id`) and

@@ -14,3 +14,7 @@ exports.ARTISAN_MAKERS_TABLE = ARTISAN_MAKERS_TABLE
 exports.ARTISAN_SCULPTS_TABLE = ARTISAN_SCULPTS_TABLE
 exports.ARTISAN_COLORWAYS_TABLE = ARTISAN_COLORWAYS_TABLE
 exports.DELIVERY_BASE_URL = `https://imagedelivery.net/${process.env.CF_IMAGES_ACCOUNT_HASH}`
+
+// List of makers that are known to have incomplete data
+// and should not have missing items removed from the database
+exports.PARTIAL_MAKERS = new Set(['keycat'])

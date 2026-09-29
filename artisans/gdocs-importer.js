@@ -9,6 +9,7 @@ const {
     updateMetadata,
     setDryRun,
 } = require('./utils/database')
+const { PARTIAL_MAKERS } = require('../utils')
 const { downloadDoc, getFile, getRevisions } = require('./utils/docs')
 const { uploadImage, getListImages } = require('../utils/image')
 const { parser } = require('./utils/parser')
@@ -121,7 +122,7 @@ async function scan(maker) {
 
         // partial sync: don't delete rows that just belong to a missing doc
         const { modified, colorways } = await updateMakerDatabase(database, {
-            preserve_missing: hasMissingDoc,
+            preserve_missing: PARTIAL_MAKERS.has(id) || hasMissingDoc,
             available_document_ids: availableDocumentIds,
         })
 
