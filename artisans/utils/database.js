@@ -1,7 +1,19 @@
 const { createClient } = require('@supabase/supabase-js')
 const Promise = require('bluebird')
 const { writeFileSync } = require('fs')
-const { flatten, map, keyBy, isEmpty, groupBy, mapValues } = require('lodash')
+const {
+    flatten,
+    flatMap,
+    chunk,
+    map,
+    keyBy,
+    isEmpty,
+    groupBy,
+    mapValues,
+    omitBy,
+    isUndefined,
+    sortBy,
+} = require('lodash')
 const { deleteImage } = require('../../utils/image')
 const {
     ARTISAN_MAKERS_TABLE,
@@ -111,6 +123,14 @@ const getSculpts = async (maker_id, source) => {
     return data || []
 }
 
+// PostgREST filters live in the URL, so `in` lists must stay short
+const IN_CHUNK_SIZE = 100
+const INSERT_CHUNK_SIZE = 500
+const UPDATE_CONCURRENCY = 5
+
+const mapInChunks = (values, fn) =>
+    Promise.map(chunk(values, IN_CHUNK_SIZE), fn, { concurrency: 1 })
+
 const insertRows = async (table, values) => {
     if (dryRun) {
         console.log(
@@ -121,11 +141,17 @@ const insertRows = async (table, values) => {
         return
     }
 
-    const { error } = await supabase.from(table).insert(values)
+    await Promise.map(
+        chunk(values, INSERT_CHUNK_SIZE),
+        async (batch) => {
+            const { error } = await supabase.from(table).insert(batch)
 
-    if (error) {
-        console.warn(`insert new ${table} error`, error)
-    }
+            if (error) {
+                console.warn(`insert new ${table} error`, error)
+            }
+        },
+        { concurrency: 1 },
+    )
 }
 
 const deleteRows = async (table, column, values) => {
@@ -137,28 +163,57 @@ const deleteRows = async (table, column, values) => {
         return
     }
 
-    const { error } = await supabase.from(table).delete().in(column, values)
+    await mapInChunks(values, async (batch) => {
+        const { error } = await supabase.from(table).delete().in(column, batch)
 
-    if (error) {
-        console.warn(`delete old ${table} error`, error)
-    }
+        if (error) {
+            console.warn(`delete old ${table} error`, error)
+        }
+    })
 }
 
-const updateRow = async (table, id, values) => {
-    if (dryRun) {
-        console.log(
-            `[DRY RUN] Would update ${table} row with id: ${id}`,
-            values,
-        )
+const payloadKey = (values) => JSON.stringify(sortBy(Object.entries(values), 0))
 
-        return
-    }
+// entries: [id, values][]. Rows with an identical payload share one request
+// per chunk of ids; only rows whose changes all differ cost a request each.
+// Not an upsert: that would insert NOT NULL columns and overwrite any column
+// missing from a row's payload.
+const updateRows = async (table, entries) => {
+    const payloads = entries
+        .map(([id, values]) => [id, omitBy(values, isUndefined)])
+        .filter(([, values]) => !isEmpty(values))
 
-    const { error } = await supabase.from(table).update(values).eq('id', id)
+    const batches = flatMap(
+        Object.values(groupBy(payloads, ([, values]) => payloadKey(values))),
+        (rows) => chunk(rows, IN_CHUNK_SIZE),
+    )
 
-    if (error) {
-        console.warn(`update ${table} row error`, id, error)
-    }
+    await Promise.map(
+        batches,
+        async (batch) => {
+            const ids = batch.map(([id]) => id)
+            const [, values] = batch[0]
+
+            if (dryRun) {
+                console.log(
+                    `[DRY RUN] Would update ${ids.length} rows in ${table}`,
+                    { ids, values },
+                )
+
+                return
+            }
+
+            const { error } = await supabase
+                .from(table)
+                .update(values)
+                .in('id', ids)
+
+            if (error) {
+                console.warn(`update ${table} rows error`, ids, error)
+            }
+        },
+        { concurrency: UPDATE_CONCURRENCY },
+    )
 }
 
 // only these sculpt fields are ever synced from google docs
@@ -229,11 +284,7 @@ const updateSculpts = async (sculpts, source) => {
     }
 
     if (!isEmpty(updateSculpt)) {
-        await Promise.map(
-            Object.entries(updateSculpt),
-            ([id, data]) => updateRow(ARTISAN_SCULPTS_TABLE, id, data),
-            { concurrency: 1 },
-        )
+        await updateRows(ARTISAN_SCULPTS_TABLE, Object.entries(updateSculpt))
 
         console.log('sculpts updated', Object.entries(updateSculpt).length)
     }
@@ -467,11 +518,7 @@ const updateMakerDatabase = async (tables, options = {}) => {
     if (!isEmpty(updateClw)) {
         modified = true
 
-        await Promise.map(
-            Object.entries(updateClw),
-            ([id, data]) => updateRow(ARTISAN_COLORWAYS_TABLE, id, data),
-            { concurrency: 1 },
-        )
+        await updateRows(ARTISAN_COLORWAYS_TABLE, Object.entries(updateClw))
 
         console.log('colorways updated', Object.entries(updateClw).length)
     }
@@ -483,20 +530,22 @@ const updateMakerDatabase = async (tables, options = {}) => {
     }
 
     if (deletedRows.length) {
-        const outdatedItems = await supabase
-            .from('user_collection_items')
-            .select('artisan_item_id')
-            .in('artisan_item_id', deletedRows)
-            .then(({ data }) => data.map((r) => r.artisan_item_id))
+        const outdatedItemBatches = await mapInChunks(deletedRows, (batch) =>
+            supabase
+                .from('user_collection_items')
+                .select('artisan_item_id')
+                .in('artisan_item_id', batch)
+                .then(({ data }) => data.map((r) => r.artisan_item_id)),
+        )
+        const outdatedItems = flatten(outdatedItemBatches)
 
         // marked for deletion are added to user collections for later removal
-        await Promise.map(
-            outdatedItems,
-            async (id) => {
-                await updateRow(ARTISAN_COLORWAYS_TABLE, id, { deleted: true })
-            },
-            { concurrency: 1 },
-        )
+        if (outdatedItems.length) {
+            await updateRows(
+                ARTISAN_COLORWAYS_TABLE,
+                outdatedItems.map((id) => [id, { deleted: true }]),
+            )
+        }
 
         // deleting colorways does not add them to any collections
         await deleteRows(

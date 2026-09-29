@@ -95,6 +95,20 @@ docs (`customMerge` in `gdocs-importer.js` offsets `order` when merging).
   flow unless that scraper tolerates a single page failing, or missing rows of a tagged
   page would be deleted and `PARTIAL_MAKERS` would stop protecting them.
 
+## Writes are batched, not per-row
+
+`insertRows` chunks at `INSERT_CHUNK_SIZE`, `deleteRows` chunks `.in()` at
+`IN_CHUNK_SIZE` — both needed once a maker has more rows than fit in one PostgREST
+request. `updateRows` groups the `[id, values]` pairs it's given by identical payload
+(`payloadKey`) and issues one `.update(values).in('id', ids)` per distinct payload
+(chunked the same way); rows with no real change (`omitBy(isUndefined)` leaves nothing)
+are dropped before that, so a no-op sync costs zero requests. This does **not** send
+different values per row in one request — Supabase has no bulk-upsert-with-partial-
+columns primitive that respects `overridden_fields`, so a batch of colorways that each
+changed differently still costs one request per row; only genuinely-identical payloads
+(e.g. backfilling one field across everything) collapse. Always build the `[id, values]`
+list and call `updateRows` once — don't reach for `Promise.map(..., updateRow, ...)`.
+
 ## Migrations
 
 - Name files `YYYYMMDDHHMMSS_description.sql` and write them by hand.
